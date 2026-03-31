@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter analyze:*)",
+      "Bash(flutter build:*)",
+      "Bash(git config:*)",
+      "Bash(gh auth:*)",
+      "Bash(MSYS_NO_PATHCONV=1 flutter build web --release --base-href \"/dart_score/\")",
+      "Bash(winget install:*)",
+      "Bash(export PATH=\"$PATH:/c/Program Files/GitHub CLI\")",
+      "Bash(gh --version)"
+    ]
+  }
+}
