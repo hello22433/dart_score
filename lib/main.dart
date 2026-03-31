@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   runApp(const DartScoreApp());
@@ -49,6 +51,20 @@ class Player {
     required this.score,
     this.note = '',
   });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'score': score,
+        'note': note,
+      };
+
+  factory Player.fromJson(Map<String, dynamic> json) => Player(
+        id: json['id'] as int,
+        name: json['name'] as String,
+        score: json['score'] as int,
+        note: json['note'] as String? ?? '',
+      );
 }
 
 class ScoreBoardPage extends StatefulWidget {
@@ -67,6 +83,31 @@ class _ScoreBoardPageState extends State<ScoreBoardPage> {
   final _noteController = TextEditingController();
 
   Player? _editingPlayer;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final json = prefs.getString('players');
+    if (json != null) {
+      final list = jsonDecode(json) as List;
+      setState(() {
+        _players.addAll(list.map((e) => Player.fromJson(e)));
+        if (_players.isNotEmpty) {
+          _nextId = _players.map((p) => p.id).reduce((a, b) => a > b ? a : b) + 1;
+        }
+      });
+    }
+  }
+
+  Future<void> _saveData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('players', jsonEncode(_players.map((p) => p.toJson()).toList()));
+  }
 
   List<Player> get _sortedPlayers {
     final sorted = List<Player>.from(_players);
@@ -121,6 +162,7 @@ class _ScoreBoardPageState extends State<ScoreBoardPage> {
     _nameController.clear();
     _scoreController.clear();
     _noteController.clear();
+    _saveData();
   }
 
   void _selectPlayer(Player player) {
@@ -151,6 +193,47 @@ class _ScoreBoardPageState extends State<ScoreBoardPage> {
         _noteController.clear();
       }
     });
+    _saveData();
+  }
+
+  void _deleteAll() {
+    if (_players.isEmpty) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: DartColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Text('전체 삭제',
+            style: TextStyle(color: DartColors.text, fontSize: 17)),
+        content: Text(
+          '${_players.length}명의 데이터를 모두 삭제하시겠습니까?',
+          style: const TextStyle(color: DartColors.textDim, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('취소',
+                style: TextStyle(color: DartColors.textDim)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              setState(() {
+                _players.clear();
+                _editingPlayer = null;
+                _nameController.clear();
+                _scoreController.clear();
+                _noteController.clear();
+              });
+              _saveData();
+            },
+            child: const Text('삭제',
+                style: TextStyle(
+                    color: DartColors.red, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -247,37 +330,48 @@ class _ScoreBoardPageState extends State<ScoreBoardPage> {
             ),
             child: Column(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: DartColors.accent,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(width: 36),
+                      const Spacer(),
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: DartColors.accent,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    const Text(
-                      'DART SCORE',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: DartColors.text,
-                        letterSpacing: 6,
+                      const SizedBox(width: 16),
+                      const Text(
+                        'DART SCORE',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: DartColors.text,
+                          letterSpacing: 6,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: DartColors.accent,
+                      const SizedBox(width: 16),
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: DartColors.accent,
+                        ),
                       ),
-                    ),
-                  ],
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: _deleteAll,
+                        child: const Icon(Icons.delete_sweep,
+                            color: DartColors.textDim, size: 22),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Container(
